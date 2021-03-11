@@ -29,5 +29,5 @@ aws cloudformation update-stack \
         ParameterKey=ServiceImage,ParameterValue=${AWS_ACCOUNT_ID}.dkr.ecr.us-east-2.amazonaws.com/${service_name}	\
         ParameterKey=ServiceVersion,ParameterValue=${version} \
         ParameterKey=ServiceName,ParameterValue=${service_name} \
-        ParameterKey=LogGroupName,ParameterValue=/${service_name}/docker/${env_name} \
+        ParameterKey=LogGroupName,ParameterValue=/${service_name}/docker/${env_name}
 aws cloudformation wait stack-update-complete --stack-name=${stack_name}

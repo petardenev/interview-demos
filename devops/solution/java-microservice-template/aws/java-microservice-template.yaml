@@ -163,7 +163,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-group: !Ref LogGroup
       TaskRoleArn: !GetAtt TaskRole.Arn
-      Family: "template-staging"
+      Family: !Ref ServiceName
       NetworkMode: bridge
   ECSService:
     Type: AWS::ECS::Service
