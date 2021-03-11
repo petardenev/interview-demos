@@ -1,0 +1,41 @@
+server:
+  port: 8080
+---
+spring:
+  profiles: development
+  datasource:
+    url: jdbc:postgresql://localhost:5432/template
+    username: test
+    password: test
+
+  jpa:
+    openInView: false
+    show_sql: false
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+
+logging:
+  level:
+    org.springframework.web: INFO
+  file: /tmp/app.log
+---
+spring:
+  profiles: deployment
+  datasource:
+    url: jdbc:postgresql://${DBHOST}:5432/${DBNAME}
+    username: ${DBUSER}
+    password: ${DBPASSWORD}
+    ssl: false
+
+  jpa:
+    openInView: false
+    show_sql: false
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+
+logging:
+  level:
+    org.springframework.web: INFO
+  file: /dev/stdout

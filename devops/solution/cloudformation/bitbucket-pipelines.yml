@@ -1,0 +1,28 @@
+image: atlassian/pipelines-awscli
+
+buildSteps:
+  - restoreSandbox: &restoreSandbox
+      name: Restore Prod2Sandbox
+      caches:
+        - docker
+      script:
+        - echo "Triggering Restore of latest PROD DB instance to Sandbox"
+        - rds/restore2dev.sh rds/postgre-restore.yml sandbox postgre-sandbox-cluster
+  - restoreDev: &restoreDev
+      name: Restore Prod2Dev
+      caches:
+        - docker
+      script:
+        - echo "Triggering Restore of latest PROD DB instance to Dev"
+        - rds/restore2dev.sh rds/postgre-restore.yml dev postgre-dev-cluster
+
+pipelines:
+  custom:
+    restore2sandbox:
+      - step: *restoreSandbox
+    restore2dev:
+      - step: *restoreDev
+
+
+options:
+  docker: true

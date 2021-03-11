@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: "Anyraffle RDS Database"
+
+Parameters:
+  DBSnapshot:
+    Type: String
+    Default: ""
+
+  DBCluster:
+    Type: String
+    Default: ""
+
+  DBInstance:
+    Type: String
+    Default: ""
+
+Resources:
+  RDSCluster:
+    Type: "AWS::RDS::DBCluster"
+    Properties:
+      DBClusterIdentifier: !Ref DBCluster
+      DBClusterParameterGroupName: default.aurora-postgresql9.6
+      DBSubnetGroupName: default
+      Engine: aurora-postgresql
+      EngineVersion: "9.6.16"
+      SnapshotIdentifier: !Ref DBSnapshot
+      PreferredBackupWindow: '05:28-05:58'
+      PreferredMaintenanceWindow: tue:00:17-tue:00:47
+      BackupRetentionPeriod: 1
+      Port: 5432
+      VpcSecurityGroupIds:
+        - sg-0a70ce064c473acf6
+        - sg-683c3903
+        - sg-058fa054051ba3bea
+        - sg-0dc50f80031e265d8
+        - sg-0464f40b690b5db2b
+
+
+  RDSDBInstance1:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      DBInstanceClass: db.r5.large
+      DBInstanceIdentifier: !Ref DBInstance
+      DBClusterIdentifier: !Ref RDSCluster
+      DBParameterGroupName: default.aurora-postgresql9.6
+      PubliclyAccessible: true
+      Engine: aurora-postgresql
+      EngineVersion: 9.6.16
+      LicenseModel: postgresql-license
+      StorageType: aurora
+      DBSubnetGroupName: default

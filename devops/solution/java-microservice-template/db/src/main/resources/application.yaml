@@ -1,0 +1,29 @@
+spring:
+  profiles: development
+  application:
+    name: database-migration
+  main:
+    web-application-type: NONE
+  datasource:
+    url: jdbc:postgresql://localhost:5432/template
+    username: test
+    password: test
+  liquibase:
+    enabled: true
+    change-log: classpath:dbchangelog.xml
+---
+spring:
+  profiles: deployment
+  application:
+    name: database-migration
+  main:
+    web-application-type: NONE
+  datasource:
+    url: jdbc:postgresql://${DBHOST}:5432/${DBNAME}
+    username: ${DBUSER}
+    password: ${DBPASSWORD}
+    ssl: false
+  liquibase:
+    enabled: true
+    change-log: classpath:dbchangelog.xml
+---

@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: tests
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:template;DB_CLOSE_ON_EXIT=TRUE
+  liquibase:
+    enabled: true
+    change-log: classpath:test-main-changelog.xml
+    drop-first: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      database-platform: org.hibernate.dialect.H2Dialect
+      generate-ddl: false
+    show-sql: true
+    properties:
+      hibernate:
+        use_sql_comments: true
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /console

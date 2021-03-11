@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="initial-change-set" author="ekins">
+        <createTable tableName="entities">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </createTable>
+        <insert tableName="entities">
+            <column name="id">7a6b9900-5ac6-4ca5-9b95-fa1ef720f355</column>
+            <column name="name">test</column>
+        </insert>
+        <rollback>
+            <dropTable tableName="entities"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

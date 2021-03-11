@@ -1,0 +1,49 @@
+image: atlassian/pipelines-awscli
+
+buildSteps:
+  - buildDocker: &buildDocker
+      name: build Docker
+      image: atlassian/pipelines-awscli
+      script:
+        - eval $(aws ecr get-login --region ${AWS_DEFAULT_REGION} --no-include-email)
+        - docker build -t ${BITBUCKET_REPO_SLUG}:latest .
+        - docker tag ${BITBUCKET_REPO_SLUG}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-2.amazonaws.com/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT}
+        - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-2.amazonaws.com/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT}
+        - docker tag ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-2.amazonaws.com/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT}
+  - deploySandbox: &deploySandbox
+      name: deploy Sandbox
+      deployment: test
+      image: atlassian/pipelines-awscli
+      trigger: manual
+      script:
+        - echo "Executing Liquibase Changesets"
+        - db/update-db.sh ${DBHOST} ${DBNAME} ${DBUSER} ${DBPASSWORD} sandbox
+        - echo "Deploying to Sandbox"
+        - aws/update-stack.sh ${BITBUCKET_REPO_SLUG}-sandbox sandbox aws/${BITBUCKET_REPO_SLUG}.yaml ${BITBUCKET_COMMIT} ${BITBUCKET_REPO_SLUG}
+  - deployProduction: &deployProduction
+      name: deploy Production
+      deployment: production
+      image: atlassian/pipelines-awscli
+      trigger: manual
+      script:
+        - echo "Executing Liquibase Changesets"
+        - db/update-db.sh ${DBHOST} ${DBNAME} ${DBUSER} ${DBPASSWORD} sandbox
+        - echo "Deploying to Production"
+        - aws/update-stack.sh ${BITBUCKET_REPO_SLUG}-production production aws/${BITBUCKET_REPO_SLUG}.yaml ${BITBUCKET_COMMIT} ${BITBUCKET_REPO_SLUG}
+
+pipelines:
+  default:
+    - step: *buildDocker
+    - step: *deploySandbox
+
+  branches:
+    master:
+      - step: *buildDocker
+      - step: *deploySandbox
+      - step: *deployProduction
+
+caches:
+  - docker
+
+options:
+  docker: true

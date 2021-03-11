@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Tournament Service Application Deployment"
+
+Parameters:
+  EnvironmentName:
+    Type: String
+
+  ServiceCount:
+    Type: Number
+    Default: 1
+
+  TournamentImage:
+    Type: String
+
+  TournamentVersion:
+    Type: String
+
+  LogsRetention:
+    Type: Number
+    Default: 7
+
+  InfrastructureStackName:
+    Description: Infrastructure stack to associate this stack with
+    Type: String
+    Default: staging-infrastructure
+
+  DBHOST:
+    Description: Database host
+    Type: String
+
+  DBNAME:
+    Description: Database name
+    Type: String
+
+Conditions:
+  IsProduction:
+    !Equals [!Ref EnvironmentName, "production"]
+
+Resources:
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub ecs-tasks.${AWS::URLSuffix}
+            Action: sts:AssumeRole
+
+  LBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 8080
+      Protocol: HTTP
+      VpcId:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}:VpcId"
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      HealthCheckIntervalSeconds: 60
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 15
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 10
+      Matcher:
+        HttpCode: 200
+  LBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref LBTargetGroup
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig:
+            Values:
+            - !Ref DNSRecordV4
+      ListenerArn:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}:LoadBalancerListener"
+      Priority: 1
+  DNSRecordV4:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Type: A
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue: !Sub "${InfrastructureStackName}:LoadBalancer:DNSName"
+        HostedZoneId:
+          Fn::ImportValue: !Sub "${InfrastructureStackName}:LoadBalancer:CanonicalHostedZoneID"
+      HostedZoneName:
+        Fn::Sub:
+          - "${DomainName}."
+          - DomainName:
+              Fn::ImportValue: !Sub "${InfrastructureStackName}:DomainName"
+      Name: !If
+        - IsProduction
+        - Fn::Sub:
+            - "${DomainName}"
+            - DomainName:
+                Fn::ImportValue: !Sub "${InfrastructureStackName}:DomainName"
+        - Fn::Sub:
+            - "${EnvironmentName}.${DomainName}"
+            - DomainName:
+                Fn::ImportValue: !Sub "${InfrastructureStackName}:DomainName"
+  DNSRecordV6:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Type: AAAA
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue: !Sub "${InfrastructureStackName}:LoadBalancer:DNSName"
+        HostedZoneId:
+          Fn::ImportValue: !Sub "${InfrastructureStackName}:LoadBalancer:CanonicalHostedZoneID"
+      HostedZoneName:
+        Fn::Sub:
+          - "${DomainName}."
+          - DomainName:
+              Fn::ImportValue: !Sub "${InfrastructureStackName}:DomainName"
+      Name: !Ref DNSRecordV4
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: !Ref LogsRetention
+      LogGroupName: "/tournament-service/docker/staging"
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Image: !Sub "${TournamentImage}:${TournamentVersion}"
+          Name: TournamentService
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 0
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: DBHOST
+              Value: !Ref DBHOST
+            - Name: DBUSER
+              Value: "postgres"
+            - Name: DBPASSWORD
+              Value: "CB9m3vZs78WYayztod8Y"
+            - Name: DBNAME
+              Value: !Ref DBNAME
+          Essential: true
+          MemoryReservation: 512
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      Family: "tournament-staging"
+      NetworkMode: bridge
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: LBListenerRule
+    Properties:
+      Cluster:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}:EcsCluster"
+      LoadBalancers:
+        - ContainerName: TournamentService
+          ContainerPort: 8080
+          TargetGroupArn: !Ref LBTargetGroup
+      DesiredCount: !Ref ServiceCount
+      LaunchType: EC2
+      SchedulingStrategy: REPLICA
+      ServiceName: "tournament-staging"
+      TaskDefinition: !Ref TaskDefinition
